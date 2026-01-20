@@ -1,0 +1,58 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+*.whl
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Django specific
+*.log
+local_settings.py
+db.sqlite3
+media/
+static/
+main
+manage.py
+
+# PyCharm / VS Code / other editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS/Linux/Windows OS junk
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+._*
+
+# dotenv files (if used)
+.env
+.env.*
