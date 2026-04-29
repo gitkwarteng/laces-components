@@ -2,6 +2,7 @@
 from django.http import HttpResponse
 from django.urls import reverse
 
+from .base import TemplateStringComponent
 from .form import FormComponent, FormButton
 from .table.columns import BaseColumn
 from .table.table import TableComponent
@@ -35,11 +36,15 @@ class ComponentViewMixin:
 
 class TableComponentViewMixin:
 
+    table_class = TableComponent
     columns = []
     editable = False
     numbered = True
     pk_field = 'pk'
     page_size = 20
+
+    def get_table_class(self):
+        return self.table_class
 
     def get_table_columns(self):
         if not self.columns:
@@ -57,7 +62,10 @@ class TableComponentViewMixin:
         return self.columns
 
     def get_table_component(self):
-        return TableComponent(
+
+        table_class = self.get_table_class()
+
+        return table_class(
             data=self.get_queryset(),
             columns=self.get_table_columns(),
             model=self.model,
