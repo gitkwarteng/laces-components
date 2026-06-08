@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'Django>=4.0',
-        'laces>=0.1.2',
+        'laces>=0.2.0',
         'django-widget-tweaks>=1.5.1',
     ],
     author='Antwi Kwarteng',
