@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from .base import AutoTemplateStringComponent, TemplateStringComponent
 from .card import SummaryCardList
-from .form import FormComponent
+from .form import FormComponent, InlineFormsetFormComponent
 
 @dataclasses.dataclass
 class Breadcrumb(AutoTemplateStringComponent):
@@ -142,5 +142,15 @@ class FormPageBody(AutoTemplateStringComponent):
 
 
 @dataclasses.dataclass
+class InlineFormsetFormPageBody(FormPageBody):
+    form: InlineFormsetFormComponent
+
+
+@dataclasses.dataclass
 class FormPage(Page):
     body: FormPageBody = None
+
+
+@dataclasses.dataclass
+class InlineFormPage(Page):
+    body: InlineFormsetFormPageBody = None

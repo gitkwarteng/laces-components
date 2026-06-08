@@ -1,0 +1,45 @@
+{% load i18n static %}
+
+{{ formset.management_form }}
+{{ formset.non_form_errors }}
+
+<ul id="{{formset.prefix}}_formset" class="formset-ul" data-prefix="{{formset.prefix}}" data-caption="{{caption|default:'Line'}}">
+{% for form in formset %}
+
+    {% for error in form.non_field_errors %}
+        <span class="text-danger small"><i class="fa fa-exclamation"></i> {% translate error %}</span>
+    {% endfor %}
+
+      <li class="formset {{formset.prefix}} border-bottom py-2 my-3" >
+        <div class="row">
+        {% for field in form.visible_fields %}
+        
+          {# Include the hidden fields in the form #}
+          {% if forloop.first %}
+            {% for hidden in form.hidden_fields %}
+              {{ hidden }}
+            {% endfor %}
+          {% endif %}
+            {% comment %} {{ field.errors.as_ul }} {% endcomment %}
+            {% if read_only %}
+              {{ field.value }}
+            {% else %}
+            
+              {% include 'components/forms/form-field.html' with field=field colwidth=field_size %}
+
+            {% endif %}
+            
+            {% comment %} {{ field }} {% endcomment %}
+        
+        {% endfor %}
+        </div>
+        </li>
+
+{% endfor %}
+</ul>
+
+<ul id="{{formset.prefix}}_empty_form" style="display:none">
+  {% include "components/forms/list-formset-form.html" with form=formset.empty_form field_size=field_size %}
+</ul>
+
+

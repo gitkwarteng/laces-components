@@ -1,9 +1,10 @@
 import dataclasses
-from typing import Optional
+from typing import Optional, List
 
 from django.forms import Form as DjangoForm
 
 from .base import AutoTemplateStringComponent
+from .enums import InlineFormsetDisplay
 
 
 @dataclasses.dataclass
@@ -37,9 +38,67 @@ class FormComponent(AutoTemplateStringComponent):
     action:str = ''
     method:str = 'get'
     form_id:str = None
-    form_class:str = 'form'
+    css_class:str = 'form'
     field_size: str = 'col-md-6 col-12'
     show_field_labels:bool = True
+    alignment:str = 'left'
+
+    template = '''
+    {% load widget_tweaks laces %}
+    <form method="{{ method }}" class="{{ css_class }}" action="{{ action }}" id="#{{ form_id }}">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger" role="alert">
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% if method.lower == 'post' %}
+            {% csrf_token %}
+        {% endif %}
+        <div class="row justify-content-{{alignment}} px-3">
+            {% for field in form %}
+                {% include 'components/forms/form-field.html' with field=field field_size=field_size show_field_labels=show_field_labels %}
+            {% endfor %}
+            
+            {% if method != 'get' %} </div><div class="row justify-content-center"> {% endif %} 
+            <div class="col col-auto mb-2">
+                <div class="hstack gap-2 justify-content-end d-print-none mt-4 mt-md-0">
+                    
+                    {% if cancel_button %}
+                        {% component cancel_button %}
+                    {% endif %}
+                    
+                    {% if submit_button %}
+                        {% component submit_button %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+    </form>
+    '''
+
+
+@dataclasses.dataclass
+class InlineFormset:
+    form: DjangoForm = None
+    form_class: DjangoForm = DjangoForm
+    method: str = 'post'
+    id: str = None
+    css_class: str = 'form'
+    title: str = 'Items'
+    # Inline formsets can be rendered as table or list
+    # table will render the formset as a table, list will render as a list
+    display: InlineFormsetDisplay = InlineFormsetDisplay.TABLE
+
+
+@dataclasses.dataclass
+class InlineFormsetFormComponent(FormComponent):
+    """
+    Renders a form with bootstrap classes
+    """
+    formsets: List[InlineFormset] = dataclasses.field(default_factory=list)
 
     template = '''
     {% load widget_tweaks laces %}
@@ -54,35 +113,31 @@ class FormComponent(AutoTemplateStringComponent):
         {% if method.lower == 'post' %}
             {% csrf_token %}
         {% endif %}
-        <div class="row justify-content-center">
+        <div class="row justify-content-{{alignment}} px-3">
             {% for field in form %}
-                <div class="mb-md-2 mb-3 {{ field_size }}">
-                    {% if show_field_labels %}
-                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                    {% endif %}
-                    {% if field.field.widget.input_type == 'textarea' %}
-                        <textarea name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control w-100 {% if field.errors %}is-invalid{% endif %}" rows="3">{{ field.value|default:'' }}</textarea>
-                    {% elif field.field.widget.input_type == 'checkbox' %}
-                    <div class="form-check">
-                        <input type="checkbox" name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-check-input {% if field.errors %}is-invalid{% endif %}" {% if field.value %}checked{% endif %}>
-                    </div>
-                    {% elif field.field.widget.input_type == 'select' %}
-                        {% render_field field class+="form-select w-100" placeholder=field.label %}
+                {% include 'components/forms/form-field.html' with field=field field_size=field_size show_field_labels=show_field_labels %}
+            {% endfor %}
+        </div>
+        
+        {% if formsets %}
+            {% for formset in formsets %}
+            
+                <h3 class="mb-3">{{ formset.title }} </h3>
+                <hr class="my-2">
+                <div class="row justify-content-center px-3">
+                    {% if formset.display.value == 'table' %}
+                        {% include 'components/forms/table-formset.html' with formset=formset.form %}
                     {% else %}
-                        {% render_field field class+="form-control w-100" placeholder=field.label %}
-                    {% endif %}
-                    {% if field.errors %}
-                        <div class="invalid-feedback">{{ field.errors.0 }}</div>
-                    {% endif %}
-                    {% if field.help_text %}
-                        <small class="form-text text-muted">{{ field.help_text }}</small>
+                        {% include 'components/forms/list-formset.html' with formset=formset.form %}
                     {% endif %}
                 </div>
-            {% endfor %}
             
+            {% endfor %}
+        {% endif %}
+        
+        <div class="row justify-content-center">
             <div class="col col-auto mb-2">
                 <div class="hstack gap-2 justify-content-end d-print-none mt-4 mt-md-0">
-                    
                     {% if cancel_button %}
                         {% component cancel_button %}
                     {% endif %}

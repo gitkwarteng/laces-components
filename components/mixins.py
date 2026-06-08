@@ -106,6 +106,7 @@ class TableComponentViewMixin:
 class FormComponentViewMixin:
 
     form_class = None
+    form_component_class = FormComponent
     form_method:str = 'get'
     form_action: str = ''
     form_button: FormButton = None
@@ -114,9 +115,9 @@ class FormComponentViewMixin:
     show_field_labels = True
 
     def get_form_component(self):
-        return FormComponent(
+        return self.form_component_class(
             method=self.form_method,
-            form_class=self.form_element_class,
+            css_class=self.form_element_class,
             form=self.get_form(),
             action=self.get_form_action(),
             submit_button=self.get_form_button(),

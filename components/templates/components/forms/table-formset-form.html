@@ -1,0 +1,20 @@
+{% load i18n static %}
+
+<tr class="empty-formset">
+    {% for field in form.visible_fields %}
+        <td>
+            {# Include the hidden fields in the form #}
+            {% if forloop.first %}
+                {% for hidden in form.hidden_fields %}
+                    {{ hidden }}
+                {% endfor %}
+            {% endif %}
+            {% if read_only %}
+                {{ field.value }}
+            {% else %}
+                {% include 'components/forms/form-field.html' with field=field field_size=12 show_field_labels=False norequired=True %}
+            {% endif %}
+        </td>
+    {% endfor %}
+</tr>
+

@@ -12,7 +12,9 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.urls import path, reverse
 import json
 
-from .views import BaseListPage, BaseFormPage
+from .enums import ViewType
+from .views import BaseListPage, BaseFormPage, BaseInlineFormPageView
+from components.form import FormComponent
 
 
 def action(methods=None, detail=False, url_path=None, url_name=None):
@@ -94,6 +96,8 @@ class ModelViewSet(View):
 
     # Success URLs
     success_url = None
+
+    current_view: ViewType = ViewType.LIST
 
     @classmethod
     def as_urls(cls, prefix='', base_name=None):
@@ -202,9 +206,13 @@ class ModelViewSet(View):
             'view': self,
             'model_name': self.model.__name__,
             'model_name_plural': f"{self.model.__name__}s",
+            'title': self.get_page_title()
         }
         context.update(kwargs)
         return context
+
+    def get_page_title(self):
+        return 'Page'
 
     def get_list_context_data(self, **kwargs):
         """Get context data specifically for list action."""
@@ -326,8 +334,10 @@ class ModelViewSet(View):
 
                     # Call the custom action method
                     if action_info['detail']:
+                        self.current_view = ViewType.DETAIL
                         return action_info['method'](request, pk)
                     else:
+                        self.current_view = ViewType.LIST
                         return action_info['method'](request)
                 else:
                     return self.error_response(request, f"Method {request.method} not allowed", 405)
@@ -336,12 +346,19 @@ class ModelViewSet(View):
         if request.method == 'GET':
             if pk:
                 if 'edit' in path_info:
+                    self.current_view = ViewType.EDIT
                     return self.edit(request, pk)
                 elif 'delete' in path_info:
+                    self.current_view = ViewType.DELETE
                     return self.delete_confirm(request, pk)
+
+                self.current_view = ViewType.DETAIL
                 return self.retrieve(request, pk)
             elif 'create' in path_info:
+                self.current_view = ViewType.CREATE
                 return self.create_form(request)
+
+            self.current_view = ViewType.LIST
             return self.list(request)
         elif request.method == 'POST':
             if pk:
@@ -431,17 +448,20 @@ class ModelViewSet(View):
             except Exception as e:
                 return self.error_response(request, str(e), 400)
         else:
-            form = self.get_form()
-            if form.is_valid():
-                obj = form.save()
-                if self.accepts_html(request):
-                    return redirect(self.get_success_url(obj))
-                return JsonResponse(self.serialize(obj), status=201)
-            else:
-                if self.accepts_html(request):
-                    context = self.get_create_context_data(form=form, action='create')
-                    return self.render_to_response(context, self.template_form)
-                return JsonResponse({'errors': form.errors}, status=400)
+            return self.process_form(request, context=self.get_create_context_data(action='create'))
+
+    def process_form(self, request, context) -> Any:
+        form = self.get_form()
+        if form.is_valid():
+            obj = form.save()
+            if self.accepts_html(request):
+                return redirect(self.get_success_url(obj))
+            return JsonResponse(self.serialize(obj), status=201)
+        else:
+            if self.accepts_html(request):
+                context['form'] = form
+                return self.render_to_response(context, self.template_form)
+            return JsonResponse({'errors': form.errors}, status=400)
 
     def edit(self, request, pk):
         """Show edit form (HTML only)."""
@@ -473,17 +493,7 @@ class ModelViewSet(View):
             except Exception as e:
                 return self.error_response(request, str(e), 400)
         else:
-            form = self.get_form()
-            if form.is_valid():
-                obj = form.save()
-                if self.accepts_html(request):
-                    return redirect(self.get_success_url(obj))
-                return JsonResponse(self.serialize(obj))
-            else:
-                if self.accepts_html(request):
-                    context = self.get_edit_context_data(form=form, object=obj, action='edit')
-                    return self.render_to_response(context, self.template_form)
-                return JsonResponse({'errors': form.errors}, status=400)
+            return self.process_form(request, context=self.get_edit_context_data(action='edit'))
 
     def partial_update(self, request, pk):
         """PATCH request - partial update."""
@@ -557,13 +567,39 @@ class PageModelViewSet(BaseListPage, BaseFormPage, ModelViewSet):
         form_class = modelform_factory(self.model, fields=fields)
         return form_class(**form_kwargs)
 
+    def get_filter_form(self):
+        return FormComponent(
+            method=self.filter_form_method,
+            css_class=self.form_element_class,
+            form=self.get_form(),
+            action=self.filter_form_action,
+            submit_button=self.get_form_button(),
+            cancel_button=self.get_cancel_button(),
+            show_field_labels=False,
+            alignment='center',
+        )
+
     def list(self, request):
         self.show_field_labels = False
         self.form_method = self.filter_form_method
         return  super().list(request)
 
     def get_page_title(self):
-        return self.title or self.model._meta.verbose_name_plural.title()
+        if not self.model:
+            return 'Page'
+
+        model_name = self.model._meta.verbose_name.title()
+
+        if self.current_view.is_edit:
+            return f'Edit {model_name}'
+        elif self.current_view.is_create:
+            return f'Create {model_name}'
+        elif self.current_view.is_delete:
+            return f'Delete {model_name}'
+        elif self.current_view.is_detail:
+            return f'{model_name} Details'
+        else:
+            return f'{model_name} List'
 
     def get_page_sub_title(self):
         return self.sub_title or 'Items'
@@ -601,3 +637,38 @@ class PageModelViewSet(BaseListPage, BaseFormPage, ModelViewSet):
         if self.is_form_view:
             return super(BaseListPage, self).get_cancel_button()
         return None
+
+
+class InlinePageModelViewSet(BaseInlineFormPageView, PageModelViewSet):
+
+    def process_form(self, request, context) -> Any:
+        try:
+            form = self.get_form()
+
+            formsets = self.get_inline_formsets()
+            formset_forms = [f.form for f in formsets]
+
+            if form.is_valid():
+                obj = form.save()
+
+                # Process formsets if form is valid
+                for formset in formset_forms:
+                    if formset.is_valid():
+                        formset.save()
+
+                if self.accepts_html(request):
+                    return redirect(self.get_success_url(obj))
+                return JsonResponse(self.serialize(obj), status=201)
+            else:
+                if self.accepts_html(request):
+                    context['form'] = form
+                    context['formset'] = formset
+                    return self.render_to_response(context, self.template_form)
+                return JsonResponse({'errors': form.errors}, status=400)
+
+        except Exception as e:
+            if self.accepts_html(request):
+                context['form'] = form
+                context['formset'] = formset
+                return self.render_to_response(context, self.template_form)
+            return JsonResponse({'errors': e.__str__()}, status=400)

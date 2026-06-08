@@ -1,0 +1,19 @@
+{% load static i18n %}
+
+<li class="empty-formset">
+    <div class="row">
+        {% for field in form.visible_fields %}
+            {% if forloop.first %}
+                {% for hidden in form.hidden_fields %}
+                    {{ hidden }}
+                {% endfor %}
+            {% endif %}
+            {% if read_only %}
+                {{ field.value }}
+            {% else %}
+                {% include 'components/forms/form-field.html' with field=field field_size=colwidth show_field_labels=False %}
+            {% endif %}
+        {% endfor %}
+    </div>
+</li>
+
