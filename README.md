@@ -229,13 +229,13 @@ Powerful data table with pagination, sorting, and editing:
 
 ```python
 from components.table.table import TableComponent
-from components.table.columns import TextColumn, DateColumn, ActionColumn
+from components.table.columns import TextInputColumn, DateInputColumn, ActionColumn
 
 # Define columns
 columns = [
-    TextColumn(name='title', header='Book Title'),
-    TextColumn(name='author', header='Author'),
-    DateColumn(name='published_date', header='Published'),
+    TextInputColumn(name='title', header='Book Title'),
+    TextInputColumn(name='author', header='Author'),
+    DateInputColumn(name='published_date', header='Published'),
     ActionColumn(name='actions', header='Actions')
 ]
 
@@ -256,15 +256,15 @@ Various column types for different data:
 
 ```python
 from components.table.columns import (
-    TextColumn, DateColumn, NumberColumn, 
+    TextInputColumn, DateInputColumn, NumberInputColumn,
     BooleanColumn, ActionColumn, DeleteButtonColumn
 )
 
 columns = [
-    TextColumn(name='name', header='Product Name', sortable=True),
-    NumberColumn(name='price', header='Price', format='${:.2f}'),
+    TextInputColumn(name='name', header='Product Name', sortable=True),
+    NumberInputColumn(name='price', header='Price', format='${:.2f}'),
     BooleanColumn(name='active', header='Active'),
-    DateColumn(name='created_at', header='Created', format='%Y-%m-%d'),
+    DateInputColumn(name='created_at', header='Created', format='%Y-%m-%d'),
     ActionColumn(name='actions', header='Actions'),
     DeleteButtonColumn(name='delete', header='')
 ]

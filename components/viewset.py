@@ -645,7 +645,7 @@ class InlinePageModelViewSet(BaseInlineFormPageView, PageModelViewSet):
         try:
             form = self.get_form()
 
-            formsets = self.get_inline_formsets()
+            formsets = self.get_formsets()
             formset_forms = [f.form for f in formsets]
 
             if form.is_valid():

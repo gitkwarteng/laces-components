@@ -129,6 +129,13 @@ class LinkColumn(BaseColumn):
         return self.template
 
 
+class DateColumn(BaseColumn):
+
+    def get_value(self, row):
+        date_value: datetime.date = super().get_value(row)
+        return date_value.strftime("%Y-%m-%d %T") if date_value else ""
+
+
 @dataclasses.dataclass(frozen=False)
 class HTMLInputColumn(BaseColumn):
     input_type = "text"
@@ -169,7 +176,7 @@ class HTMLInputColumn(BaseColumn):
         return data
 
 @dataclasses.dataclass(frozen=False)
-class TextColumn(HTMLInputColumn):
+class TextInputColumn(HTMLInputColumn):
     hx_post:str = ''
     hx_target:str = 'closest td'
     hx_trigger:str = 'keyup[key=="Enter"] changed'
@@ -230,13 +237,13 @@ class TextColumn(HTMLInputColumn):
         return data
 
 
-class NumberColumn(TextColumn):
+class NumberInputColumn(TextInputColumn):
 
     input_type = "number"
 
 
 @dataclasses.dataclass(frozen=False)
-class DecimalColumn(TextColumn):
+class DecimalInputColumn(TextInputColumn):
 
     input_class:str = 'pe-2'
     align:str = 'end'
@@ -247,7 +254,7 @@ class DecimalColumn(TextColumn):
 
 
 @dataclasses.dataclass(frozen=False)
-class QuantityColumn(TextColumn):
+class QuantityInputColumn(TextInputColumn):
 
     input_class:str = 'quantity-input'
     align:str = 'center'
@@ -305,7 +312,7 @@ class QuantityColumn(TextColumn):
         return data
 
 
-class DateColumn(TextColumn):
+class DateInputColumn(TextInputColumn):
 
     input_type = "date"
 
@@ -315,7 +322,7 @@ class DateColumn(TextColumn):
 
 
 @dataclasses.dataclass(frozen=False)
-class SelectColumn(TextColumn):
+class SelectInputColumn(TextInputColumn):
 
     options: Optional[List[Any]] = None
     hx_trigger:str = 'change'

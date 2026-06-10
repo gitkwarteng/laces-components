@@ -2,6 +2,7 @@ import dataclasses
 from typing import List, Optional, Union
 
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 
 from .base import AutoTemplateStringComponent, TemplateStringComponent
 
@@ -23,7 +24,7 @@ class MenuItem(AutoTemplateStringComponent):
 
     template = '''
     <li class="nav-item">
-        <a href="{{ url }}" class="nav-link" data-key="t-basic">
+        <a href="{{ url }}" hx-get="{{ url }}" class="nav-link" data-key="t-basic">
             {{ label }}
         </a>
     </li>
@@ -56,7 +57,7 @@ class LevelOneMenuItem(MenuItem):
 
     template = '''
     <li class="nav-item">
-        <a class="nav-link menu-link" href={{ url }}>
+        <a class="nav-link menu-link" href={{ url }} hx-get={{ url }}>
             <i class="{{ icon }}"></i> <span data-key="t-widgets">{{ label }} </span>
             {% if badge %}
                 <span class="badge {{ badge_class}}" data-key="t-hot">{{ badge }}</span>
@@ -100,7 +101,7 @@ class LevelTwoMenuItem(LevelOneMenuItem):
 
     template = '''
     <li class="nav-item">
-        <a class="nav-link" href={{ url }}">
+        <a class="nav-link" href="{{ url }}" hx-get="{{ url }}">
             {{ label }}
             {% if badge %}
                 <span class="badge {{ badge_class}}" data-key="t-hot">{{ badge }}</span>
@@ -135,14 +136,38 @@ class LevelTwoMenuItem(LevelOneMenuItem):
 class Menu(AutoTemplateStringComponent):
     items: List[MenuItem] = dataclasses.field(default_factory=list)
     css_class: str = 'menu'
+    hx_target: str = 'body'
+    hx_select: str = None
+    hx_indicator: str = '#indicator'
+    hx_swap: str = 'outerHTML'
+    hx_boost: bool = True
+    hx_push_url: bool = True
+
+    hx_attrs = ''' hx-boost="{boost}" hx-target="{target}" hx-indicator="{indicator}" hx-swap="{swap}" hx-push-url="{push}" hx-select="{select}" '''
+
+    def get_htmx_attributes(self):
+        return self.hx_attrs.format(
+            boost='true' if self.hx_boost else 'false',
+            push='true' if  self.hx_push_url else 'false',
+            target=self.hx_target,
+            select=self.hx_select or self.hx_target,
+            indicator=self.hx_indicator,
+            swap=self.hx_swap
+        )
 
     template = '''
     {% load laces %}
     <nav class="{{ css_class }}">
-        <ul class="menu-list">
+        <ul class="menu-list" {{ htmx_attrs }} >
             {% for item in items %}
                 {% component item %}
             {% endfor %}
         </ul>
     </nav>
     '''
+
+    def get_context_data(self, parent_context=None):
+        context = super().get_context_data(parent_context)
+        context['htmx_attrs'] = mark_safe(self.get_htmx_attributes())
+
+        return context

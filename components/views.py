@@ -1,3 +1,4 @@
+import this
 from typing import List
 
 from django.urls import reverse, NoReverseMatch
@@ -224,6 +225,7 @@ class BaseInlineFormPageView:
     inline_formsets: List[InlineFormset] = []
     form_method: str = 'post'
     form_element_class = 'form'
+    formsets = []
 
     def get_component_class(self):
         return self.page_component_class
@@ -232,21 +234,23 @@ class BaseInlineFormPageView:
         kwargs = self.get_form_kwargs()
         return kwargs
 
-    def get_inline_formsets(self):
-        formsets = []
+    def get_formsets(self):
+        if self.formsets:
+            return self.formsets
+
         for formset in self.inline_formsets:
             formset_class = formset.form_class
             formset.form = formset_class(**self.get_formset_kwargs())
-            formsets.append(formset)
+            self.formsets.append(formset)
 
-        return formsets
+        return self.formsets
 
     def get_form_component(self):
         return self.form_component_class(
             method=self.form_method,
             css_class=self.form_element_class,
             form=self.get_form(),
-            formsets=self.get_inline_formsets(),
+            formsets=self.get_formsets(),
             action=self.get_form_action(),
             submit_button=self.get_form_button(),
             cancel_button=self.get_cancel_button(),
@@ -257,6 +261,12 @@ class BaseInlineFormPageView:
         return InlineFormsetFormPageBody(
             form=self.get_form_component(),
         )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['formsets'] = self.get_formsets()
+
+        return context
 
 
 class CreateUpdatePageView(BaseFormPage, UpdateView):
