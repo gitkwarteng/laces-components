@@ -480,9 +480,19 @@ class ModalLinkButtonColumn(ButtonColumn):
         return data
 
 
+@dataclasses.dataclass
+class DropDownAction:
+    label: str
+    url: str = None
+    action: str = None
+    icon: str = ""
+    css_class: str = ""
+    confirm: str = ""
+
+
 @dataclasses.dataclass(kw_only=True, frozen=False)
 class DropDownColumn(ButtonColumn):
-    actions: List[Dict[str, Any]] = dataclasses.field(default_factory=list)
+    actions: List[DropDownAction] = dataclasses.field(default_factory=list)
     hx_target: str = 'body'
     hx_select: str = None
     hx_indicator: str = '#indicator'
@@ -517,30 +527,38 @@ class DropDownColumn(ButtonColumn):
             return url() if callable(url) else url
         return '#'
 
-    def get_default_actions(self):
-        return [
-            {"label": "View", "action": "detail", "icon": "ri-eye-fill", "class": "text-muted"},
-            {"label": "Edit", "action": "edit", "icon": "ri-pencil-fill", "class": "text-muted"},
-            {"label": "Delete", "action": "delete", "icon": "ri-delete-bin-5-line", "class": "text-danger", "confirm": "Are you sure you want to delete this item?"},
-        ]
+    def get_view_action(self):
+        return DropDownAction(label="View", action="detail", icon="ri-eye-fill", css_class="text-muted")
+
+    def get_edit_action(self):
+        return DropDownAction(label="Edit", action="edit", icon="ri-pencil-fill", css_class="text-muted")
+
+    def get_delete_action(self):
+        return DropDownAction(label="Delete", action="delete", icon="ri-delete-bin-5-line", css_class="text-danger", confirm="Are you sure you want to delete this item?")
 
     def render_actions(self, row_id, row):
-        actions = self.actions or self.get_default_actions()
+        view_action = self.get_view_action()
+        edit_action = self.get_edit_action()
+        delete_action = self.get_delete_action()
+
+        custom_actions = self.actions or []
+        all_actions = [view_action, edit_action] + list(custom_actions) + [delete_action]
+
         rendered = []
         htmx_attrs = self.get_htmx_attributes()
 
-        for i, action in enumerate(actions):
+        for i, action in enumerate(all_actions):
             if i > 0:
                 rendered.append('<li class="dropdown-divider py-0 my-0"></li>')
 
-            label = action.get("label", "")
-            icon = action.get("icon", "")
-            css_class = action.get("class", "")
-            confirm = action.get("confirm", "")
+            label = action.label
+            icon = action.icon
+            css_class = action.css_class
+            confirm = action.confirm
 
-            url = action.get("url")
+            url = action.url
             if not url:
-                action_name = action.get("action")
+                action_name = action.action
                 url = self.get_action_url(row_id, row, action_name)
 
             onclick = f"return confirm('{confirm}')" if confirm else ""
@@ -559,9 +577,6 @@ class DropDownColumn(ButtonColumn):
 
         data.update({
             "rendered_actions": self.render_actions(row_id, row),
-            "edit_url": self.get_action_url(row_id, row, "edit"),
-            "view_url": self.get_action_url(row_id, row, "detail"),
-            "delete_url": self.get_action_url(row_id, row, "delete"),
             "htmx_attrs": mark_safe(self.get_htmx_attributes()),
         })
 
