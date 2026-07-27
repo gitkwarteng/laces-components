@@ -15,9 +15,10 @@ import json
 from .enums import ViewType
 from .views import BaseListPage, BaseFormPage, BaseInlineFormPageView
 from components.form import FormComponent
+from .table.columns import DropDownAction
 
 
-def action(methods=None, detail=False, url_path=None, url_name=None):
+def action(methods=None, detail=False, url_path=None, url_name=None, icon=None, css_class=None, confirm=None, label=None):
     """
     Decorator to mark a method as a custom action.
 
@@ -26,6 +27,10 @@ def action(methods=None, detail=False, url_path=None, url_name=None):
         detail: Whether this is a detail action (requires pk) or list action
         url_path: Custom URL path (defaults to method name)
         url_name: Custom URL name (defaults to method name)
+        icon: Icon class for the action
+        css_class: CSS class for the action
+        confirm: Confirmation message for the action
+        label: Label for the action
 
     Example:
         @action(methods=['get'], detail=True)
@@ -44,6 +49,10 @@ def action(methods=None, detail=False, url_path=None, url_name=None):
         func.action_detail = detail
         func.action_url_path = url_path or func.__name__.replace('_', '-')
         func.action_url_name = url_name or func.__name__
+        func.action_icon = icon
+        func.action_css_class = css_class
+        func.action_confirm = confirm
+        func.action_label = label or func.__name__.replace('_', ' ').title()
         return func
 
     return decorator
@@ -308,6 +317,10 @@ class ModelViewSet(View):
                     'detail': attr.action_detail,
                     'url_path': attr.action_url_path,
                     'url_name': attr.action_url_name,
+                    'icon': getattr(attr, 'action_icon', None),
+                    'css_class': getattr(attr, 'action_css_class', None),
+                    'confirm': getattr(attr, 'action_confirm', None),
+                    'label': getattr(attr, 'action_label', None),
                 })
         return actions
 
@@ -397,9 +410,11 @@ class ModelViewSet(View):
             pagination_data = self.paginate_queryset(queryset, paginate_by)
             context.update(pagination_data)
             objects = pagination_data['object_list']
+            self.object_list = pagination_data['object_list']
         else:
             context['object_list'] = queryset
             objects = queryset
+            self.object_list = queryset
 
         # Get action-specific context
         context = self.get_list_context_data(**context)
@@ -577,6 +592,20 @@ class PageModelViewSet(BaseListPage, BaseFormPage, ModelViewSet):
         form_class = modelform_factory(self.model, fields=fields)
         return form_class(**form_kwargs)
 
+    def get_list_item_actions(self):
+        actions = super().get_list_item_actions()
+        for action_info in self.get_custom_actions():
+            if action_info['detail'] and 'GET' in action_info['methods']:
+                actions.append(DropDownAction(
+                    label=action_info['label'],
+                    action=action_info['url_name'],
+                    url=action_info['url_path'],
+                    icon=action_info['icon'] or 'ri-arrow-right-s-line',
+                    css_class=action_info['css_class'] or 'text-muted',
+                    confirm=action_info['confirm'] or '',
+                ))
+        return actions
+
     def get_filter_form(self):
         return FormComponent(
             method=self.filter_form_method,
@@ -587,6 +616,7 @@ class PageModelViewSet(BaseListPage, BaseFormPage, ModelViewSet):
             cancel_button=self.get_cancel_button(),
             show_field_labels=False,
             alignment='center',
+            htmx_attrs=self.get_htmx_attrs()
         )
 
     def list(self, request):

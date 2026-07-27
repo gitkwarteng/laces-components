@@ -10,12 +10,13 @@ class Breadcrumb(AutoTemplateStringComponent):
     title: str
     url: str
     active: bool = False
+    htmx_attrs: Optional[str] = None
 
     template = '''
         {% if active %}
             <li class="breadcrumb-item active">{{ title }}</li>
         {% else %}
-            <li class="breadcrumb-item"><a href="{{url}}">{{ title }}</a></li>
+            <li class="breadcrumb-item"><a href="{{url}}" hx-get="{{url}}" {{htmx_attrs}}>{{ title }}</a></li>
         {% endif %}
     '''
 
@@ -66,6 +67,7 @@ class ListPageBody(AutoTemplateStringComponent):
     table: Optional[TemplateStringComponent] = None
     summary: Optional[SummaryCardList] = None
     filter_form: Optional[FormComponent] = None
+    htmx_attrs: Optional[str] = None
 
     template = '''
     {% load laces %}
@@ -86,7 +88,7 @@ class ListPageBody(AutoTemplateStringComponent):
                                 <button class="btn btn-primary" id="remove-actions"
                                         onClick="deleteMultiple()"><i class="ri-delete-bin-2-line"></i>
                                 </button>
-                                <a href="{{ create_url }}" class="btn btn-danger"><i
+                                <a href="{{ create_url }}" hx-get="{{ create_url }}" {{htmx_attrs}} class="btn btn-danger"><i
                                         class="ri-add-line align-bottom me-1"></i> Create {{ title }}</a>
                             </div>
                         </div>
@@ -124,6 +126,7 @@ class ListPage(Page):
 @dataclasses.dataclass
 class FormPageBody(AutoTemplateStringComponent):
     form: FormComponent
+    htmx_attrs: Optional[str] = None
 
     template = '''
     {% load laces %}

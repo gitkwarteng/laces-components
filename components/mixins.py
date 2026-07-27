@@ -83,7 +83,7 @@ class TableComponentViewMixin:
         table_class = self.get_table_class()
 
         return table_class(
-            data=self.get_queryset(),
+            data=self.get_table_data(),
             columns=self.get_table_columns(),
             model=self.model,
             editable=self.editable,
@@ -119,6 +119,9 @@ class TableComponentViewMixin:
             ctx = self.get_context_data(**kwargs)
             return self.render_to_response(ctx)
 
+    def get_table_data(self):
+        return self.get_queryset()
+
 
 class FormComponentViewMixin:
 
@@ -139,7 +142,9 @@ class FormComponentViewMixin:
             action=self.get_form_action(),
             submit_button=self.get_form_button(),
             cancel_button=self.get_cancel_button(),
-            show_field_labels=self.show_field_labels
+            show_field_labels=self.show_field_labels,
+            htmx_attrs=self.get_htmx_attrs(),
+
         )
 
     def get_form_action(self):
@@ -160,4 +165,7 @@ class FormComponentViewMixin:
             text='Cancel', button_type='link', classes='btn-lg btn-light mt-3 me-5', icon='ri-close-fill',
             url=reverse(f'{self.model._meta.app_label}:{self.model.url_base_name}-list')
         )
+
+    def get_htmx_attrs(self):
+        pass
 

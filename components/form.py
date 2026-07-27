@@ -2,6 +2,7 @@ import dataclasses
 from typing import Optional, List
 
 from django.forms import Form as DjangoForm
+from django.utils.safestring import mark_safe
 
 from .base import AutoTemplateStringComponent
 from .enums import InlineFormsetDisplay
@@ -35,7 +36,7 @@ class FormComponent(AutoTemplateStringComponent):
     form:DjangoForm
     submit_button: Optional[FormButton] = None
     cancel_button: Optional[FormButton] = None
-    action:str = ''
+    action:str = ""
     method:str = 'get'
     form_id:str = None
     css_class:str = 'form'
@@ -43,9 +44,11 @@ class FormComponent(AutoTemplateStringComponent):
     show_field_labels:bool = True
     alignment:str = 'left'
 
+    htmx_attrs: Optional[str] = None
+
     template = '''
     {% load widget_tweaks laces %}
-    <form method="{{ method }}" class="{{ css_class }}" action="{{ action }}" id="#{{ form_id }}">
+    <form method="{{ method }}" class="{{ css_class }}" action="{{ action }}" hx-{{ method }}="{{ action }}" id="#{{ form_id }}" {{ htmx_attrs }}>
         {% if form.non_field_errors %}
             <div class="alert alert-danger" role="alert">
                 {% for error in form.non_field_errors %}

@@ -27,7 +27,8 @@ class PageView(ComponentViewMixin):
             Breadcrumb(
                 title="Dashboard",
                 url=reverse('core:home'),
-                active=False
+                active=False,
+                htmx_attrs=self.get_htmx_attrs()
             )
         ]
 
@@ -53,6 +54,9 @@ class PageView(ComponentViewMixin):
 
         return context
 
+    def get_htmx_attrs(self):
+        return 'hx-boost="false" hx-target="body" hx-indicator="#indicator" hx-swap="outerHTML" hx-push-url="true" hx-select="body"'
+
 
 class BaseListPage(PageView, TableComponentViewMixin, FormComponentViewMixin):
     component_class = ListPage
@@ -73,7 +77,8 @@ class BaseListPage(PageView, TableComponentViewMixin, FormComponentViewMixin):
             Breadcrumb(
                 title=self.get_page_title(),
                 url='',
-                active=True
+                active=True,
+                htmx_attrs=self.get_htmx_attrs()
             )
         ]
 
@@ -113,6 +118,9 @@ class BaseListPage(PageView, TableComponentViewMixin, FormComponentViewMixin):
     def get_page_table(self):
         return self.get_table_component()
 
+    def get_table_data(self):
+        return self.get_page_table_data()
+
     def get_page_body(self):
         return self.get_list_page_body()
 
@@ -125,11 +133,12 @@ class BaseListPage(PageView, TableComponentViewMixin, FormComponentViewMixin):
 
     def get_list_page_body(self) -> ListPageBody:
         return ListPageBody(
-            title=self.get_page_sub_title(),
+            title=self.model._meta.verbose_name,
             create_url=self.get_create_url(),
             table=self.get_table_component(),
             summary=self.get_page_summary(),
-            filter_form=self.get_filter_form()
+            filter_form=self.get_filter_form(),
+            htmx_attrs=self.get_htmx_attrs()
         )
 
     def get_filter_form(self):
@@ -194,12 +203,14 @@ class BaseFormPage(PageView, FormComponentViewMixin):
             Breadcrumb(
                 title=self.model._meta.verbose_name.title(),
                 url=reverse(f'{self.model._meta.app_label}:{self.model.url_base_name}-list'),
-                active=False
+                active=False,
+                htmx_attrs=self.get_htmx_attrs()
             ),
             Breadcrumb(
                 title=self.get_page_title(),
                 url='',
-                active=True
+                active=True,
+                htmx_attrs=self.get_htmx_attrs()
             )
         ]
 
