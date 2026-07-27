@@ -47,12 +47,17 @@ class TableComponentViewMixin:
     def get_table_class(self):
         return self.table_class
 
+    def get_list_item_actions(self):
+        """Return a list of custom actions for row in the table."""
+        return []
+
     def get_action_column(self):
         return self.action_column_class(
             name='actions',
             header='Actions',
             sortable=False,
             editable=False,
+            actions=self.get_list_item_actions()
         )
 
     def get_table_columns(self):
