@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from .base import TemplateStringComponent
 from .form import FormComponent, FormButton
-from .table.columns import BaseColumn
+from .table.columns import BaseColumn, DropDownColumn
 from .table.table import TableComponent
 from .enums import ViewActionScope
 from .exceptions import CommonException
@@ -37,6 +37,7 @@ class ComponentViewMixin:
 class TableComponentViewMixin:
 
     table_class = TableComponent
+    action_column_class = DropDownColumn
     columns = []
     editable = False
     numbered = True
@@ -46,16 +47,27 @@ class TableComponentViewMixin:
     def get_table_class(self):
         return self.table_class
 
+    def get_action_column(self):
+        return self.action_column_class(
+            name='actions',
+            header='Actions',
+            sortable=False,
+            editable=False,
+        )
+
     def get_table_columns(self):
         if not self.columns:
             # Check if model has defined list_display
-            list_display = getattr(self.model, 'list_display', [])
+            list_display = list(getattr(self.model, 'list_display', []))
             if not list_display:
                 # Dynamically generate list_display from model fields
                 list_display = [
                     BaseColumn(name=field.name, header=field.verbose_name)
                     for field in self.model._meta.fields
                 ]
+
+            # Add dropdown column
+            list_display.append(self.get_action_column())
 
             self.columns = list_display
 

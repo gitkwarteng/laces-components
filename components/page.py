@@ -101,7 +101,7 @@ class ListPageBody(AutoTemplateStringComponent):
                 
                 <div class="card-body">
                     <div>
-                        <div class="table-responsive table-card">
+                        <div class="table-responsive table-card overflow-visible">
                             {% if table %} 
                                 {% component table %}
                             {% endif %}

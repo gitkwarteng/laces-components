@@ -78,11 +78,11 @@ class BaseColumn(Component):
             "value": value,
             "class": self.get_classes(),
             "style": self.get_styles(),
-            'align':self.align
+            'align': self.align
         }
 
     def render_html(self, parent_context=None):
-        row  = self.get_row(parent_context)
+        row = self.get_row(parent_context)
         value = self.get_value(row)
         template_data = self.get_template_data(
             value, self.get_id(row), row, parent_context
@@ -102,9 +102,25 @@ class BaseColumn(Component):
 class LinkColumn(BaseColumn):
     detail: bool = False
     url_name: str = None
+    hx_target: str = 'body'
+    hx_select: str = None
+    hx_indicator: str = '#indicator'
+    hx_swap: str = 'outerHTML'
+    hx_push_url: bool = True
 
-    template = '''<span><a href="{url}" hx-get="{url}" class="">{value}</a></span>'''
+    template = '''<span><a href="{url}" hx-get="{url}" class="" {htmx} >{value}</a></span>'''
     url_args: List[str] = dataclasses.field(default_factory=list)
+
+    hx_attrs = ''' hx-target="{target}" hx-indicator="{indicator}" hx-swap="{swap}" hx-push-url="{push}" hx-select="{select}" '''
+
+    def get_htmx_attributes(self):
+        return self.hx_attrs.format(
+            push='true' if self.hx_push_url else 'false',
+            target=self.hx_target,
+            select=self.hx_select or self.hx_target,
+            indicator=self.hx_indicator,
+            swap=self.hx_swap
+        )
 
     def get_url(self, row):
         try:
@@ -123,6 +139,7 @@ class LinkColumn(BaseColumn):
         url = self.get_url(row)
         data = super().get_template_data(value, row_id, row, extra_context)
         data['url'] = url
+        data['htmx'] = mark_safe(self.get_htmx_attributes())
         return data
 
     def get_template(self, value):
@@ -140,10 +157,10 @@ class DateColumn(BaseColumn):
 class HTMLInputColumn(BaseColumn):
     input_type = "text"
 
-    input_class:str = ""
-    input_style:str = ""
+    input_class: str = ""
+    input_style: str = ""
 
-    attrs:Dict[str, str] = dataclasses.field(default_factory=dict)
+    attrs: Dict[str, str] = dataclasses.field(default_factory=dict)
 
     template = '''
     <input type="{input_type}" name="{name}" id="{id}" value="{value}" class="form-control rounded text-{align}" {attrs} />
@@ -175,14 +192,15 @@ class HTMLInputColumn(BaseColumn):
 
         return data
 
+
 @dataclasses.dataclass(frozen=False)
 class TextInputColumn(HTMLInputColumn):
-    hx_post:str = ''
-    hx_target:str = 'closest td'
-    hx_trigger:str = 'keyup[key=="Enter"] changed'
-    hx_indicator:str = '#indicator'
-    hx_swap:str = 'innerHTML'
-    action:UpdateAction = UpdateAction.UPDATE_CELL
+    hx_post: str = ''
+    hx_target: str = 'closest td'
+    hx_trigger: str = 'keyup[key=="Enter"] changed'
+    hx_indicator: str = '#indicator'
+    hx_swap: str = 'innerHTML'
+    action: UpdateAction = UpdateAction.UPDATE_CELL
     scope: ViewActionScope = ViewActionScope.TABLE
 
     hx_attrs = ''' hx-post="{post}" hx-target="{target}" hx-trigger='{trigger}' hx-indicator="{indicator}" hx-swap="{swap} ignoreTitle:true" hx-push-url="false" '''
@@ -217,36 +235,33 @@ class TextInputColumn(HTMLInputColumn):
         return 'cell' if self.action.is_cell else 'row'
 
     def get_template_data(self, value, row_id, row, extra_context=None):
-
         # Check render mode from parent context
         render_mode = extra_context.get("render_mode", 'full') if extra_context else 'full'
         # Add out of band swap attribute to attributes if render mode is partial
         if render_mode == 'partial':
             self.attrs['hx-swap-oob'] = '"true"'
 
-        data  = super().get_template_data(value, row_id, row, extra_context=extra_context)
+        data = super().get_template_data(value, row_id, row, extra_context=extra_context)
 
         data.update({
             "row_id": row_id,
             "field": self.field_name,
             "htmx": mark_safe(self.get_htmx_attributes()),
-            'submit':self.get_submit(),
-            'action':self.action.value,
+            'submit': self.get_submit(),
+            'action': self.action.value,
             'scope': self.scope.value,
         })
         return data
 
 
 class NumberInputColumn(TextInputColumn):
-
     input_type = "number"
 
 
 @dataclasses.dataclass(frozen=False)
 class DecimalInputColumn(TextInputColumn):
-
-    input_class:str = 'pe-2'
-    align:str = 'end'
+    input_class: str = 'pe-2'
+    align: str = 'end'
 
     def get_value(self, row):
         value = super().get_value(row)
@@ -255,9 +270,8 @@ class DecimalInputColumn(TextInputColumn):
 
 @dataclasses.dataclass(frozen=False)
 class QuantityInputColumn(TextInputColumn):
-
-    input_class:str = 'quantity-input'
-    align:str = 'center'
+    input_class: str = 'quantity-input'
+    align: str = 'center'
 
     reduce_button_template = '''
          <button type="button" class="btn quantity-left-minus btn-subtle-danger" 
@@ -313,7 +327,6 @@ class QuantityInputColumn(TextInputColumn):
 
 
 class DateInputColumn(TextInputColumn):
-
     input_type = "date"
 
     def render(self, row):
@@ -323,9 +336,8 @@ class DateInputColumn(TextInputColumn):
 
 @dataclasses.dataclass(frozen=False)
 class SelectInputColumn(TextInputColumn):
-
     options: Optional[List[Any]] = None
-    hx_trigger:str = 'change'
+    hx_trigger: str = 'change'
 
     template = '''
         <select name="{name}" id="{id}" autocomplete="off"
@@ -368,12 +380,12 @@ class SelectInputColumn(TextInputColumn):
 @dataclasses.dataclass(kw_only=True, frozen=False)
 class ButtonColumn(HTMLInputColumn):
     btn_class: str = "primary"
-    label:str = "Click"
-    url:str = "#"
+    label: str = "Click"
+    url: str = "#"
     key = "id"
     editable = False
     sortable = False
-    input_type:str = 'button'
+    input_type: str = 'button'
     scope: ViewActionScope = ViewActionScope.TABLE
 
     template = '''
@@ -420,8 +432,8 @@ class LinkButtonColumn(ButtonColumn):
             </a>
         '''
 
-class DeleteButtonColumn(ButtonColumn):
 
+class DeleteButtonColumn(ButtonColumn):
     template = '''
         <div class="position-relative">
             <div class="hover-actions" style="top: -20px;">
@@ -437,6 +449,7 @@ class DeleteButtonColumn(ButtonColumn):
         </div>
         '''
 
+
 class AddRowButtonColumn(ButtonColumn):
     template = '''
         <input type="hidden" data-submit="row" name="product_id" id="new-row"
@@ -446,9 +459,8 @@ class AddRowButtonColumn(ButtonColumn):
         '''
 
 
-
 class ModalLinkButtonColumn(ButtonColumn):
-    onclick:str = 'V.modals.detail_modal(this)'
+    onclick: str = 'V.modals.detail_modal(this)'
 
     template = '''
             <a href="{url}" role="{input_type}"
@@ -463,6 +475,94 @@ class ModalLinkButtonColumn(ButtonColumn):
         data = super().get_template_data(value, row_id, row)
         data.update({
             "onclick": self.onclick,
+        })
+
+        return data
+
+
+@dataclasses.dataclass(kw_only=True, frozen=False)
+class DropDownColumn(ButtonColumn):
+    actions: List[Dict[str, Any]] = dataclasses.field(default_factory=list)
+    hx_target: str = 'body'
+    hx_select: str = None
+    hx_indicator: str = '#indicator'
+    hx_swap: str = 'outerHTML'
+    hx_push_url: bool = True
+
+    hx_attrs = ''' hx-target="{target}" hx-indicator="{indicator}" hx-swap="{swap}" hx-push-url="{push}" hx-select="{select}" '''
+
+    def get_htmx_attributes(self):
+        return self.hx_attrs.format(
+            push='true' if self.hx_push_url else 'false',
+            target=self.hx_target,
+            select=self.hx_select or self.hx_target,
+            indicator=self.hx_indicator,
+            swap=self.hx_swap
+        )
+
+    template = '''
+        <div class="dropdown">
+            <a href="javascript:void(0);" class="btn btn-light btn-icon" id="dropdownMenu{row_id}" data-bs-toggle="dropdown" aria-expanded="true">
+                <i class="ri-more-fill"></i>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end py-0 overflow-hidden" aria-labelledby="dropdownMenuLink{row_id}">
+                {rendered_actions}
+            </ul>
+        </div>
+    '''
+
+    def get_action_url(self, row_id, row, action):
+        if hasattr(row, f'get_{action}_url'):
+            url = getattr(row, f'get_{action}_url')
+            return url() if callable(url) else url
+        return '#'
+
+    def get_default_actions(self):
+        return [
+            {"label": "View", "action": "detail", "icon": "ri-eye-fill", "class": "text-muted"},
+            {"label": "Edit", "action": "edit", "icon": "ri-pencil-fill", "class": "text-muted"},
+            {"label": "Delete", "action": "delete", "icon": "ri-delete-bin-5-line", "class": "text-danger", "confirm": "Are you sure you want to delete this item?"},
+        ]
+
+    def render_actions(self, row_id, row):
+        actions = self.actions or self.get_default_actions()
+        rendered = []
+        htmx_attrs = self.get_htmx_attributes()
+
+        for i, action in enumerate(actions):
+            if i > 0:
+                rendered.append('<li class="dropdown-divider py-0 my-0"></li>')
+
+            label = action.get("label", "")
+            icon = action.get("icon", "")
+            css_class = action.get("class", "")
+            confirm = action.get("confirm", "")
+
+            url = action.get("url")
+            if not url:
+                action_name = action.get("action")
+                url = self.get_action_url(row_id, row, action_name)
+
+            onclick = f"return confirm('{confirm}')" if confirm else ""
+
+            rendered.append(f'''
+                <li><a class="dropdown-item {css_class} py-3" href="{url}" hx-get="{url}" {htmx_attrs} 
+                onclick="{onclick}">
+                <i class="{icon} me-2 align-middle"></i>{label}</a>
+                </li>
+            ''')
+
+        return mark_safe("\n".join(rendered))
+
+    def get_template_data(self, value, row_id, row, extra_context=None):
+        data = super().get_template_data(value, row_id, row)
+
+        data.update({
+            "rendered_actions": self.render_actions(row_id, row),
+            "edit_url": self.get_action_url(row_id, row, "edit"),
+            "view_url": self.get_action_url(row_id, row, "detail"),
+            "delete_url": self.get_action_url(row_id, row, "delete"),
+            "htmx_attrs": mark_safe(self.get_htmx_attributes()),
         })
 
         return data

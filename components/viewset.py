@@ -1,4 +1,4 @@
-from functools import cached_property
+from functools import cached_property, lru_cache
 from typing import Any
 
 from django.views import View
@@ -89,6 +89,7 @@ class ModelViewSet(View):
     # Template names
     template_list = None
     template_detail = None
+    template_delete = None
     template_form = None
 
     # URL naming
@@ -516,8 +517,9 @@ class ModelViewSet(View):
 
             if self.accepts_html(request):
                 base_name = self.base_name or self.model.__name__.lower()
+                app_name = self.model._meta.app_label
                 try:
-                    return redirect(reverse(f'{base_name}-list'))
+                    return redirect(reverse(f'{app_name}:{base_name}-list'))
                 except:
                     return HttpResponse('<h1>Success</h1><p>Object deleted successfully</p>')
 
@@ -548,9 +550,17 @@ class PageModelViewSet(BaseListPage, BaseFormPage, ModelViewSet):
         fields = self.fields if self.fields != '__all__' else None
         return modelform_factory(self.model, fields=fields)
 
+    @lru_cache
     def get_form_kwargs(self):
+        """Return the keyword arguments for instantiating the form."""
+
+        request_data = self.request.GET.copy() if self.request.method == "GET" else self.request.POST.copy()
+
+        # Remove width data from request to prevent edit operations from failing
+        request_data.pop('w', None)
+
         kwargs = {
-            'data': self.request.GET or self.request.POST or None,
+            'data': request_data or None,
         }
         if self.object:
             kwargs['instance'] = self.object
@@ -642,10 +652,9 @@ class PageModelViewSet(BaseListPage, BaseFormPage, ModelViewSet):
 class InlinePageModelViewSet(BaseInlineFormPageView, PageModelViewSet):
 
     def process_form(self, request, context) -> Any:
+        form = self.get_form()
+        formsets = self.get_formsets()
         try:
-            form = self.get_form()
-
-            formsets = self.get_formsets()
             formset_forms = [f.form for f in formsets]
 
             if form.is_valid():
@@ -662,13 +671,13 @@ class InlinePageModelViewSet(BaseInlineFormPageView, PageModelViewSet):
             else:
                 if self.accepts_html(request):
                     context['form'] = form
-                    context['formset'] = formset
+                    context['formsets'] = formsets
                     return self.render_to_response(context, self.template_form)
                 return JsonResponse({'errors': form.errors}, status=400)
 
         except Exception as e:
             if self.accepts_html(request):
                 context['form'] = form
-                context['formset'] = formset
+                context['formset'] = formsets
                 return self.render_to_response(context, self.template_form)
             return JsonResponse({'errors': e.__str__()}, status=400)
